@@ -5,8 +5,7 @@ Keep Command held and tap the grave-accent key; each release switches to the nex
 Add Shift to go backward.
 
 The focused app is detected automatically. Works with apps that expose a standard
-English **Window** menu with a checked current-window entry; Chrome and Ghostty
-have been manually tested.
+English **Window** menu with a checked current-window entry.
 
 This is a small [Hammerspoon](https://www.hammerspoon.org/) configuration module,
 not a standalone app. Apps without a usable Window menu keep their native shortcut.
@@ -31,7 +30,7 @@ preference.
 
 The module selects entries in the application's native **Window** menu, which
 includes windows on other desktops. It uses registered hotkeys rather than a
-keyboard event listener. In the tested Chrome password window, Secure Input
+keyboard event listener. In the tested password window, Secure Input
 blocked the listener but allowed the registered hotkey.
 
 The module checks the focused app's menu when you switch apps or its windows change.
@@ -56,9 +55,9 @@ permission requirements.
 - Requires an English **Window** menu whose final section lists windows and marks
   the current window with a checkmark. Apps with custom menus may not qualify.
 - Cycles in Window-menu order, which can change when window titles change.
-- Manually tested with three Chrome windows and two Ghostty windows across two
-  desktops on macOS 27.0.1, with Stage Manager enabled. Switching from a Chrome
-  window with Secure Input enabled was also tested.
+- Manually tested with five windows from two apps across two desktops on macOS
+  27.0.1, with Stage Manager enabled. Switching from a window with Secure Input
+  enabled was also tested.
 - Full-screen windows, multiple displays, other keyboard layouts, and behavior
   after reboot have not been verified.
 - Depends on the apps' Window-menu structure and current-window checkmark.
