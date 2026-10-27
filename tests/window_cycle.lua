@@ -2,7 +2,21 @@
 local root = ... or "."
 local pressed, alerts, hotkeys = {}, {}, {}
 local activation
-local app = { pid = function() return 1 end, bundleID = function() return "com.google.Chrome" end }
+local windowWatchers = {}
+local function application(pid, noMenu)
+  return {
+    pid = function() return pid end,
+    noMenu = noMenu,
+    newWatcher = function(_, fn)
+      local watcher = { callback = fn, stopped = false }
+      function watcher:start() return self end
+      function watcher:stop() self.stopped = true end
+      windowWatchers[#windowWatchers + 1] = watcher
+      return watcher
+    end,
+  }
+end
+local app = application(1)
 local front = app
 local function element(attrs, id)
   return {
@@ -25,7 +39,11 @@ local mock = {
       activation = fn; return { start = function(self) return self end }
     end },
   },
-  axuielement = { applicationElement = function() return element({ AXMenuBar = bar }) end },
+  axuielement = { applicationElement = function(a)
+    if a.noMenu then return element({}) end
+    return element({ AXMenuBar = bar })
+  end },
+  uielement = { watcher = { focusedWindowChanged = "focus", windowCreated = "created" } },
   alert = { show = function(message) alerts[#alerts + 1] = message end },
   hotkey = { new = function(_, _, press, release, repeatfn)
     assert(repeatfn == nil)
@@ -47,14 +65,26 @@ rows[3] = element({ AXTitle = "Same title" }, 1)
 rows[5] = element({ AXTitle = "Other desktop", AXMenuItemMarkChar = "✓" }, 3)
 press(); release(); assert(pressed[#pressed] == 1) -- Forward wraps.
 press()
-front = { pid = function() return 2 end, bundleID = function() return "com.apple.finder" end }
+front = application(2, true)
 activation(nil, 1)
 local count = #pressed
 release(); assert(#pressed == count) -- Do not steal focus after changing apps.
 assert(not hotkeys[1].enabled and not hotkeys[2].enabled) -- Native shortcuts elsewhere.
+assert(windowWatchers[1].stopped) -- Only watch the current app.
+front = application(3); activation(nil, 1)
+assert(hotkeys[1].enabled) -- An arbitrary app works without a bundle-ID allowlist.
+press(); release(); assert(pressed[#pressed] == 1)
+count = #pressed
 front = app; activation(nil, 1)
 assert(hotkeys[1].enabled)
 rows[5] = element({ AXTitle = "Other desktop" }, 3)
 press(); release()
 assert(#pressed == count and #alerts == 1) -- Missing selection is explicit, never guesses.
+windowWatchers[#windowWatchers].callback()
+assert(not hotkeys[1].enabled) -- An app without a checked window keeps native cycling.
+rows[5] = element({ AXTitle = "Other desktop", AXMenuItemMarkChar = "✓" }, 3)
+windowWatchers[#windowWatchers].callback()
+assert(hotkeys[1].enabled) -- A new/focused window enables cycling without switching apps.
+front = nil; activation(nil, 1)
+assert(not hotkeys[1].enabled and not hotkeys[2].enabled)
 print("window_cycle: all checks passed")
