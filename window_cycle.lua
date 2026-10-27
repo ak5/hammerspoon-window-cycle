@@ -1,12 +1,12 @@
 -- The Window menu sees other Spaces; hs.application:allWindows() does not.
-local supported = { ["com.google.Chrome"] = true, ["com.mitchellh.ghostty"] = true }
 local pending
 local cycle = {}
 
 local function windowMenu(app)
-  local bar = hs.axuielement.applicationElement(app):attributeValue("AXMenuBar")
+  local element = hs.axuielement.applicationElement(app)
+  local bar = element and element:attributeValue("AXMenuBar")
   for _, menu in ipairs(bar and bar:attributeValue("AXChildren") or {}) do
-    -- shortcut: English menus in Chrome/Ghostty only; extend when another app is needed.
+    -- shortcut: English Window menus only; add localization when needed.
     if menu:attributeValue("AXTitle") == "Window" then
       local submenu = (menu:attributeValue("AXChildren") or {})[1]
       local rows = submenu and submenu:attributeValue("AXChildren") or {}
@@ -26,7 +26,7 @@ end
 
 local function selectNext(direction)
   local app = hs.application.frontmostApplication()
-  if not app or not supported[app:bundleID()] then return end
+  if not app then return end
   if not pending or pending.app:pid() ~= app:pid() then pending = windowMenu(app) end
   if not pending then
     hs.alert.show("Cannot find the current window in the Window menu")
@@ -51,7 +51,7 @@ cycle.hotkeys = {
 }
 local function updateHotkeys()
   local app = hs.application.frontmostApplication()
-  local enabled = app and supported[app:bundleID()]
+  local enabled = app and windowMenu(app) ~= nil
   if pending and (not app or pending.app:pid() ~= app:pid()) then
     pending = nil
   end
@@ -59,8 +59,19 @@ local function updateHotkeys()
     if enabled then key:enable() else key:disable() end
   end
 end
+local function watchApp()
+  if cycle.windowWatcher then cycle.windowWatcher:stop(); cycle.windowWatcher = nil end
+  local app = hs.application.frontmostApplication()
+  if app then
+    cycle.windowWatcher = app:newWatcher(updateHotkeys):start({
+      hs.uielement.watcher.focusedWindowChanged,
+      hs.uielement.watcher.windowCreated,
+    })
+  end
+  updateHotkeys()
+end
 cycle.watcher = hs.application.watcher.new(function(_, event)
-  if event == hs.application.watcher.activated then updateHotkeys() end
+  if event == hs.application.watcher.activated then watchApp() end
 end):start()
-updateHotkeys()
+watchApp()
 return cycle
