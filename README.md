@@ -2,7 +2,12 @@
 
 Upgrade native **Command + `** to switch between an app's windows across macOS desktops.
 Keep Command held and tap the grave-accent key; each release switches to the next window.
-Add Shift to go backward.
+Each hold visits the current desktop's windows first, then windows elsewhere.
+Release Command to reset the sequence. Hold Shift from the first tap for reverse order;
+changing direction starts a new sequence.
+
+For example, with A and B on this desktop and C elsewhere, starting from A gives
+**A → B → C → A**. Release Command while on B and the next hold gives **B → A → C → B**.
 
 The focused app is detected automatically. Works with apps that expose a standard
 English **Window** menu with a checked current-window entry.
@@ -38,6 +43,12 @@ Hotkeys are enabled only when a usable window list is present. Selection happens
 when the grave-accent key is released. The module uses menu elements directly,
 so two windows with the same title remain distinct.
 
+At the start of each sequence, it queries the app's standard, non-minimized windows
+on the current desktop. It focuses those windows first and learns their corresponding
+checked menu entries as they are visited. Remaining menu entries follow afterward.
+A modifier-only listener resets the sequence when Command is released; keypresses
+still use registered hotkeys.
+
 ## Privacy and permissions
 
 The module reads application and Window-menu accessibility information,
@@ -54,7 +65,8 @@ permission requirements.
 - Detects compatible apps dynamically; there is no app allowlist.
 - Requires an English **Window** menu whose final section lists windows and marks
   the current window with a checkmark. Apps with custom menus may not qualify.
-- Cycles in Window-menu order, which can change when window titles change.
+- Local windows follow window-ID order, starting from the focused window. Windows
+  elsewhere follow Window-menu order. Minimized windows are not prioritized as local.
 - Manually tested with five windows from two apps across two desktops on macOS
   27.0.1, with Stage Manager enabled. Switching from a window with Secure Input
   enabled was also tested.
@@ -74,8 +86,9 @@ nice -n 10 lua tests/window_cycle.lua
 ```
 
 The tests mock Hammerspoon and check forward/reverse wraparound, duplicate
-titles, switching on key release, application changes, and missing menu
-selection. They do not move real windows or prove macOS integration behavior.
+titles, local-first ordering, Command-release reset, switching on key release,
+application changes, and missing menu selection. They do not move real windows
+or prove macOS integration behavior.
 
 ## License
 
